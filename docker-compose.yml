@@ -1,0 +1,28 @@
+version: "3.11"
+
+services:
+  db:
+    image: postgres:13.0-alpine
+    container_name: db
+    volumes:
+      - /var/lib/postgresql/data/
+    env_file:
+      - .env
+  stripe:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    container_name: stripe
+    hostname: stripe
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    links:
+      - db:db
+    depends_on:
+      - db
+    command: >
+      sh -c "poetry run python manage.py migrate && poetry run python manage.py shell -c 'from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser(username=\"$DJANGO_SUPERUSER_USERNAME\", email=\"$DJANGO_SUPERUSER_EMAIL\", password=\"$DJANGO_SUPERUSER_PASSWORD\")' && poetry run python manage.py data 
+      && poetry run python manage.py runserver 0.0.0.0:8000"
